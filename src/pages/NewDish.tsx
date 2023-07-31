@@ -1,3 +1,6 @@
+import { useContext } from "react";
+import { useNavigate } from "react-router";
+import { FirebaseContext } from "../firebase";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
@@ -35,7 +38,34 @@ const categories = [
   },
 ];
 
+const Label = ({ name }: { name: string }) => {
+  if (name) return null;
+
+  return (
+    <label
+      className="block text-gray-700 text-sm font-bold mb-2 capitalize"
+      htmlFor={name}
+    >
+      {name}
+    </label>
+  );
+};
+
+const ErrorMsg = ({ message }: { message: string }) => {
+  if (!message) return null;
+
+  return (
+    <div className="bg-red-100 border-l-4 border-red-500 p-4 mb-5" role="alert">
+      <p className="font-bold">Hubo un error:</p>
+      <p>{message}</p>
+    </div>
+  );
+};
+
 const NewDish = () => {
+  const { firebase } = useContext(FirebaseContext);
+  const navigate = useNavigate();
+
   const formik = useFormik({
     initialValues: {
       name: "",
@@ -43,6 +73,7 @@ const NewDish = () => {
       category: "",
       image: "",
       description: "",
+      exists: false,
     },
     validationSchema: Yup.object({
       name: Yup.string()
@@ -53,11 +84,17 @@ const NewDish = () => {
         .required("All fields are mandatory"),
       category: Yup.string().required("All fields are mandatory"),
       description: Yup.string()
-        .min(20, "The description must have more than 20 chars")
+        .min(10, "The description must have more than 10 chars")
         .required("All fields are mandatory"),
     }),
     onSubmit: (data) => {
-      console.log(data);
+      try {
+        data.exists = true;
+        firebase.db.collection("users").add(data);
+        navigate("/menu");
+      } catch (err) {
+        console.error(err);
+      }
     },
   });
 
@@ -68,12 +105,7 @@ const NewDish = () => {
         <div className="w-full max-w-3xl">
           <form onSubmit={formik.handleSubmit}>
             <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="name"
-              >
-                Name
-              </label>
+              <Label name="name" />
               <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 type="text"
@@ -85,21 +117,10 @@ const NewDish = () => {
               />
             </div>
             {formik.touched.name && formik.errors.name && (
-              <div
-                className="bg-red-100 border-l-4 border-red-500 p-4 mb-5"
-                role="alert"
-              >
-                <p className="font-bold">Hubo un error:</p>
-                <p>{formik.errors.name}</p>
-              </div>
+              <ErrorMsg message={formik.errors.name} />
             )}
             <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="price"
-              >
-                Price
-              </label>
+              <Label name="price" />
               <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 type="number"
@@ -111,22 +132,11 @@ const NewDish = () => {
                 value={formik.values.price}
               />
               {formik.touched.price && formik.errors.price && (
-                <div
-                  className="bg-red-100 border-l-4 border-red-500 p-4 mb-5"
-                  role="alert"
-                >
-                  <p className="font-bold">Hubo un error:</p>
-                  <p>{formik.errors.price}</p>
-                </div>
+                <ErrorMsg message={formik.errors.price} />
               )}
             </div>
             <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="name"
-              >
-                Name
-              </label>
+              <Label name="category" />
               <select
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 name="category"
@@ -143,47 +153,11 @@ const NewDish = () => {
                 ))}
               </select>
               {formik.touched.category && formik.errors.category && (
-                <div
-                  className="bg-red-100 border-l-4 border-red-500 p-4 mb-5"
-                  role="alert"
-                >
-                  <p className="font-bold">Hubo un error:</p>
-                  <p>{formik.errors.category}</p>
-                </div>
+                <ErrorMsg message={formik.errors.category} />
               )}
             </div>
             <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="image"
-              >
-                Image
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                type="file"
-                name="image"
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                value={formik.values.image}
-              />
-              {formik.touched.image && formik.errors.image && (
-                <div
-                  className="bg-red-100 border-l-4 border-red-500 p-4 mb-5"
-                  role="alert"
-                >
-                  <p className="font-bold">Hubo un error:</p>
-                  <p>{formik.errors.image}</p>
-                </div>
-              )}
-            </div>
-            <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="description"
-              >
-                Description
-              </label>
+              <Label name="description" />
               <textarea
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-40"
                 name="description"
@@ -193,13 +167,7 @@ const NewDish = () => {
                 value={formik.values.description}
               ></textarea>
               {formik.touched.description && formik.errors.description && (
-                <div
-                  className="bg-red-100 border-l-4 border-red-500 p-4 mb-5"
-                  role="alert"
-                >
-                  <p className="font-bold">Hubo un error:</p>
-                  <p>{formik.errors.description}</p>
-                </div>
+                <ErrorMsg message={formik.errors.description} />
               )}
             </div>
             <input
